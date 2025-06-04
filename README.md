@@ -8,7 +8,7 @@ The generated risk score is a heuristic and may not capture all complexities of 
 
 ## Overview
 
-This Python script (`analyze_vms_mk.py`) processes an export from RVTools (a VMware vSphere infrastructure reporting tool) to analyze Virtual Machines (VMs) for migration readiness. It's particularly focused on gathering information relevant for planning migrations to platforms like Red Hat OpenShift Virtualization, often facilitated by tools such as the Migration Toolkit for Virtualization (MTV).
+This Python script ( [analyze_vms_mk.py](analyze_vms_mk.py) ) processes an export from RVTools (a VMware vSphere infrastructure reporting tool) to analyze Virtual Machines (VMs) for migration readiness. It's particularly focused on gathering information potentially relevant for planning migrations to platforms like Red Hat OpenShift Virtualization, often facilitated by tools such as the Migration Toolkit for Virtualization (MTV). Always consider all current technical and non-technical aspects of your real project.
 
 The script generates a text-based report that summarizes VM characteristics, identifies potential migration complexities based on hardware, OS, VMware Tools status, and other factors, and provides a heuristic risk score to help prioritize migration efforts.
 
