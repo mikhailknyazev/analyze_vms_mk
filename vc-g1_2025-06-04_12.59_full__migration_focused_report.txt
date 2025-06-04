@@ -1,0 +1,1001 @@
+VM MIGRATION ANALYSIS REPORT
+Source RVTools File: vc-g1_2025-06-04_12.59_full.csv
+OS Breakdown File: OS Breakdown-Table 1.csv
+VI SDK API Version (from first VM): vCenterServer
+Generated on: 2025-06-04 17:58:37
+================================================================================
+IMPORTANT NOTES & MANUAL CHECKS REQUIRED (General for MTV/OpenShift Virtualization):
+  - Ensure login as a user with the minimal set of VMware privileges for migration tasks.
+  - Verify a VMware Virtual Disk Development Kit (VDDK) image is created and accessible to OpenShift Virtualization if using warm migration.
+  - If migrating >10 VMs from a single ESXi host in one migration plan, check/increase NFC service memory on the ESXi host.
+  - This script provides a heuristic risk score. Always cross-reference with detailed VM data, application owner input, and project requirements.
+  - Review specific MTV documentation for supported OS versions, hardware compatibility, and limitations.
+================================================================================
+TOTAL VMS IN RVTOOLS FILE (after initial parsing): 29
+  - Detected Templates (Excluded from Detailed Migration Analysis): 3
+  - VMs Excluded by Name Pattern (Infrastructure/Special, Excluded from Detailed Migration Analysis): 1
+  - VMs Considered for Detailed Migration Analysis (Migration Candidates): 25
+================================================================================
+
+OVERALL SUMMARY (Migration Candidates)
+--------------------------------------------------------------------------------
+  - Powered On VMs: 21
+  - Powered Off VMs: 4
+  - Total vCPUs Allocated: 121
+  - Total Memory Allocated: 536.00 GiB (approx. 548864 MiB)
+  - Total Storage Provisioned (from vInfo 'Provisioned MiB'): 20.28 TiB (approx. 20767.81 GiB)
+  - Total Storage In Use (from vInfo 'In Use MiB'): 17.29 TiB (approx. 17704.76 GiB)
+  - Total Disk Capacity (sum from vDisk 'Capacity MiB'): 20.27 TiB (approx. 20760.00 GiB)
+
+================================================================================
+CALCULATED RISK SCORE EXPLANATION & STATISTICS (For Migration Candidates)
+================================================================================
+The 'Calculated Risk Score' is a heuristic value to help quantify potential migration complexities.
+Higher scores indicate more potential issues that may require manual intervention or careful planning.
+It is derived by summing points from the following factors:
+  - OS Profile (from your OS mapping CSV):
+    - +3 points: If OS Profile is 'Hard', 'Recreate', 'Retire', 'Legacy Unix', 'Unknown/Other', 'Unknown', 'nan', 'Undefined', or 'N/A'.
+    - +1 point: If OS Profile is 'Medium'.
+  - VMware Tools Status (Interpreted from vInfo and vTools sheets):
+    - +3 points: If 'Not Installed', 'Not Running', 'Unknown Status', or 'Not Reported in CSV'.
+    - +2 points: If 'Running (Outdated/Issue)'.
+    - +1 point: If 'Running (Status Unclear)'.
+  - Virtual Hardware Version (from vInfo):
+    - +1 point: If HW version < 11 (pre-vSphere 6.0 equivalent) or 'Unknown'.
+  - Disk Controllers (from vDisk - General MTV/KVM Compatibility):
+    - +5 points: If any controller is an unsupported type like NVMe controller, NVME controller (direct MTV migration likely not supported).
+    - +1 point: If NO detected disk controller is in the generally compatible list (VMware Paravirtual, VirtIO, PVSCSI, LSI Logic SAS, LSI Logic Parallel, SCSI) and controllers are present.
+  - Network Adapters (from vNetwork - General MTV/KVM Compatibility):
+    - +1 point: If any adapter is not in the preferred list (VMXNET3, VirtIO), or if adapter type is Unknown/Not Reported for an existing NIC.
+  - Snapshots (from vSnapshot sheet):
+    - +3 points: If any snapshots are present (must be consolidated pre-migration).
+  - Firmware (from vInfo):
+    - +1 point: If firmware type is 'Unknown'.
+    - +2 points: If OS appears to be modern Windows (e.g., Server 2016+, Win 10+) and firmware is not 'Efi'.
+  - Passthrough Devices (from vInfo 'Fixed Passthru HotPlug'):
+    - +5 points: If passthrough devices are indicated ('true') (requires removal or special handling).
+
+  VM Count by Calculated Risk Score (Migration Candidates):
+    - Risk Score 1: 4 VM(s)
+    - Risk Score 2: 7 VM(s)
+    - Risk Score 3: 1 VM(s)
+    - Risk Score 4: 4 VM(s)
+    - Risk Score 5: 4 VM(s)
+    - Risk Score 6: 2 VM(s)
+    - Risk Score 8: 1 VM(s)
+    - Risk Score 9: 1 VM(s)
+    - Risk Score 13: 1 VM(s)
+================================================================================
+
+
+================================================================================
+DETECTED TEMPLATES (Excluded from Detailed Migration Analysis)
+================================================================================
+
+VM Template: display-kiosk-excluded
+  Power State: poweredOn
+  RVTools OS (Primary Source for Mapping): Windows 10 (64-bit)
+  Mapped OS Name: Windows 10
+  OS Profile (from Mapping): Medium
+  CPUs: 1, Memory: 1024 MiB
+  Provisioned Storage (vInfo 'Provisioned MiB'): 42000 MiB
+  Total Disk Capacity (vDisk sum 'Capacity MiB'): 40960 MiB
+  Annotation: Template for kiosks
+------------------------------------------------------------
+
+VM Template: template-rhel9-gold
+  Power State: poweredOff
+  RVTools OS (Primary Source for Mapping): Red Hat Enterprise Linux 9
+  Mapped OS Name: RHEL 9
+  OS Profile (from Mapping): Easy
+  CPUs: 2, Memory: 4096 MiB
+  Provisioned Storage (vInfo 'Provisioned MiB'): 63000 MiB
+  Total Disk Capacity (vDisk sum 'Capacity MiB'): 61440 MiB
+  Annotation: RHEL 9 Gold Template
+------------------------------------------------------------
+
+VM Template: virtual-desktop-temp01
+  Power State: poweredOff
+  RVTools OS (Primary Source for Mapping): Microsoft Windows 11 (64-bit)
+  Mapped OS Name: Windows 11
+  OS Profile (from Mapping): Medium
+  CPUs: 2, Memory: 8192 MiB
+  Provisioned Storage (vInfo 'Provisioned MiB'): 105000 MiB
+  Total Disk Capacity (vDisk sum 'Capacity MiB'): 102400 MiB
+  Annotation: VDI Gold Image Template - Win11
+------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+VMs EXCLUDED BY NAME PATTERN (Infrastructure/Special, Excluded from Detailed Migration Analysis)
+================================================================================
+
+Excluded VM: core-a-excluded-linux
+  Exclusion Reason: Infrastructure VM based on naming convention.
+  Power State: poweredOn
+  RVTools OS (Primary Source for Mapping): Red Hat Enterprise Linux 7.9
+  Mapped OS Name: RHEL 7
+  OS Profile (from Mapping): Easy
+  CPUs: 2, Memory: 4096 MiB
+  Provisioned Storage (vInfo 'Provisioned MiB'): 110000 MiB
+  Total Disk Capacity (vDisk sum 'Capacity MiB'): 102400 MiB
+  Annotation: Excluded by naming convention
+------------------------------------------------------------
+================================================================================
+
+
+================================================================================
+DETAILED VM INFORMATION & MIGRATION CONSIDERATIONS (Migration Candidates)
+================================================================================
+
+
+Grouping by :
+=== MIGRATION RECOMMENDATION CATEGORY: LOW COMPLEXITY / EASIER MIGRATION ===
+    (11 VM(s) in this category)
+
+VM: app-prod-win2022-efi
+  (I)   Calculated Risk Score  : 2 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2022', Profile - 'Medium' (From: 'Microsoft Windows Server 2022 (64-bit)')
+  (III) Storage Summary        : 2 disk(s), Max Disk Size (vDisk) - 100.0 GiB
+  (IV)  Functional Purpose (Ann.): Critical Production Application Server; SLA: Tier 1; Contact: AppTeam Lead
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 16384
+  Provisioned Storage (MiB) : 221234 (vInfo)
+  In Use Storage (MiB)      : 150678 (vInfo)
+  Total Disk Capacity (MiB) : 204800 (vDisk sum)
+  Number of Disks (vDisk)   : 2
+  Max Disk Size (MiB vDisk) : 102400
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 19
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Production
+  Folder Path               : /Datacenter1/Prod_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/10 10:00:00' - Notes: CBT likely enabled (Change Version: 2023/03/10 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: core-b-included-server
+  (I)   Calculated Risk Score  : 1 (Reasons: Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'RHEL 9', Profile - 'Easy' (From: 'Red Hat Enterprise Linux 9 (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 100.0 GiB
+  (IV)  Functional Purpose (Ann.): Included server
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 110000 (vInfo)
+  In Use Storage (MiB)      : 80000 (vInfo)
+  Total Disk Capacity (MiB) : 102400 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 102400
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 21
+  Cluster                   : Datacenter1
+  Resource Pool             : RP-Production
+  Folder Path               : /Datacenter1/Prod_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/01 09:00:00' - Notes: CBT likely enabled (Change Version: 2023/03/01 09:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: dev-workstation-win11-efi
+  (I)   Calculated Risk Score  : 2 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows 11', Profile - 'Medium' (From: 'Microsoft Windows 11 (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 250.0 GiB
+  (IV)  Functional Purpose (Ann.): Developer Workstation Win11
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 16384
+  Provisioned Storage (MiB) : 270000 (vInfo)
+  In Use Storage (MiB)      : 180000 (vInfo)
+  Total Disk Capacity (MiB) : 256000 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 256000
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 20
+  Cluster                   : ClusterDevWS
+  Resource Pool             : RP-DevWorkstations
+  Folder Path               : /Datacenter1/DevWorkstations
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/09/05 09:00:00' - Notes: CBT likely enabled (Change Version: 2023/09/05 09:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: dns-resolver-critical
+  (I)   Calculated Risk Score  : 1 (Reasons: Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'RHEL 8', Profile - 'Easy' (From: 'Red Hat Enterprise Linux 8.8')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 60.0 GiB
+  (IV)  Functional Purpose (Ann.): Critical DNS Resolver
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 4096
+  Provisioned Storage (MiB) : 65000 (vInfo)
+  In Use Storage (MiB)      : 40000 (vInfo)
+  Total Disk Capacity (MiB) : 61440 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 61440
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 15
+  Cluster                   : ClusterCore
+  Resource Pool             : RP-CoreInfra
+  Folder Path               : /Datacenter1/CoreInfrastructure
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/04/05 10:00:00' - Notes: CBT likely enabled (Change Version: 2023/04/05 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: excluded-vm-annotation
+  (I)   Calculated Risk Score  : 1 (Reasons: Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Desktop Other', Profile - 'Windows Desktop' (From: 'Windows XP Professional')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 20.0 GiB
+  (IV)  Functional Purpose (Ann.): VM with specific annotation for script logic testing: DEPRECATED_Migrate=False
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 2048
+  Provisioned Storage (MiB) : 22000 (vInfo)
+  In Use Storage (MiB)      : 15000 (vInfo)
+  Total Disk Capacity (MiB) : 20480 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 20480
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 9349 (9.3.5)
+  Hardware Version          : 13
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Production
+  Folder Path               : /Datacenter1/Prod_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 9349 (9.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2020/02/01 10:00:00' - Notes: CBT likely enabled (Change Version: 2020/02/01 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: fileserver-win2019-multidisk
+  (I)   Calculated Risk Score  : 2 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2019', Profile - 'Medium' (From: 'Microsoft Windows Server 2019 (64-bit)')
+  (III) Storage Summary        : 4 disk(s), Max Disk Size (vDisk) - 1000.0 GiB
+  (IV)  Functional Purpose (Ann.): Main File Server; Multiple large disks; Backup Job: DailyFS
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 8
+  Memory (MiB)              : 32768
+  Provisioned Storage (MiB) : 2100000 (vInfo)
+  In Use Storage (MiB)      : 1800000 (vInfo)
+  Total Disk Capacity (MiB) : 2150400 (vDisk sum)
+  Number of Disks (vDisk)   : 4
+  Max Disk Size (MiB vDisk) : 1024000
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 19
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Storage
+  Folder Path               : /Datacenter1/FileServers
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/02/10 10:00:00' - Notes: CBT likely enabled (Change Version: 2023/02/10 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: infra-x101-excluded-win
+  (I)   Calculated Risk Score  : 2 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2016', Profile - 'Medium' (From: 'Microsoft Windows Server 2016 (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 150.0 GiB
+  (IV)  Functional Purpose (Ann.): Excluded by naming convention; Needs consolidation
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOff
+  CPUs                      : 4
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 160000 (vInfo)
+  In Use Storage (MiB)      : 120000 (vInfo)
+  Total Disk Capacity (MiB) : 153600 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 153600
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 10346 (10.3.10)
+  Hardware Version          : 19
+  Cluster                   : ClusterInfra
+  Resource Pool             : RP-Infrastructure
+  Folder Path               : /Datacenter1/Infra
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 10346 (10.3.10). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/01/15 09:00:00' - Notes: CBT likely enabled (Change Version: 2023/01/15 09:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: loadbalancer-nginx
+  (I)   Calculated Risk Score  : 1 (Reasons: Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Debian Other', Profile - 'Linux' (From: 'Debian GNU/Linux 11 (bullseye)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 60.0 GiB
+  (IV)  Functional Purpose (Ann.): Nginx Load Balancer
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 65000 (vInfo)
+  In Use Storage (MiB)      : 30000 (vInfo)
+  Total Disk Capacity (MiB) : 61440 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 61440
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 21
+  Cluster                   : ClusterLB
+  Resource Pool             : RP-LoadBalancers
+  Folder Path               : /Datacenter1/LoadBalancers
+  Number of NICs (vInfo)    : 2
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/06/05 14:00:00' - Notes: CBT likely enabled (Change Version: 2023/06/05 14:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: net-group-y22-excluded-rhel
+  (I)   Calculated Risk Score  : 2 (Reasons: Disk Controllers: +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'RHEL 8', Profile - 'Easy' (From: 'Red Hat Enterprise Linux 8 (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 80.0 GiB
+  (IV)  Functional Purpose (Ann.): Network device
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 2048
+  Provisioned Storage (MiB) : 85000 (vInfo)
+  In Use Storage (MiB)      : 60000 (vInfo)
+  Total Disk Capacity (MiB) : 81920 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 81920
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 17
+  Cluster                   : Datacenter2
+  Resource Pool             : RP-Network
+  Folder Path               : /Datacenter2/Network
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Disk Controllers; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: sata)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/10 09:00:00' - Notes: CBT likely enabled (Change Version: 2023/03/10 09:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: report-server-sql-thin
+  (I)   Calculated Risk Score  : 2 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2019', Profile - 'Medium' (From: 'Microsoft Windows Server 2019 (64-bit)')
+  (III) Storage Summary        : 2 disk(s), Max Disk Size (vDisk) - 200.0 GiB
+  (IV)  Functional Purpose (Ann.): SQL Server for Reporting Services
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 8
+  Memory (MiB)              : 32768
+  Provisioned Storage (MiB) : 320000 (vInfo)
+  In Use Storage (MiB)      : 250000 (vInfo)
+  Total Disk Capacity (MiB) : 307200 (vDisk sum)
+  Number of Disks (vDisk)   : 2
+  Max Disk Size (MiB vDisk) : 204800
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 19
+  Cluster                   : Datacenter1
+  Resource Pool             : RP-Reporting
+  Folder Path               : /Datacenter1/Reporting
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/15 14:00:00' - Notes: CBT likely enabled (Change Version: 2023/03/15 14:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: utility-centos7-thin
+  (I)   Calculated Risk Score  : 2 (Reasons: Hardware Version (10): +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'CentOS 7', Profile - 'Easy' (From: 'CentOS Linux 7 (Core)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 50.0 GiB
+  (IV)  Functional Purpose (Ann.): General utility server; Thin provisioned disk
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 55000 (vInfo)
+  In Use Storage (MiB)      : 20000 (vInfo)
+  Total Disk Capacity (MiB) : 51200 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 51200
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 11269 (11.2.5)
+  Hardware Version          : 10
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Utility
+  Folder Path               : /Datacenter1/Utility_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Hardware Version (10); Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 11269 (11.2.5). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (10), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic parallel)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/01 14:30:00' - Notes: CBT likely enabled (Change Version: 2023/03/01 14:30:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+
+Grouping by :
+=== MIGRATION RECOMMENDATION CATEGORY: MEDIUM COMPLEXITY ===
+    (2 VM(s) in this category)
+
+VM: db-dev-rhel8-snap
+  (I)   Calculated Risk Score  : 4 (Reasons: Network Adapters: +1; Snapshots Present: +3)
+  (II)  OS & Complexity        : Mapped OS - 'RHEL 8', Profile - 'Easy' (From: 'Red Hat Enterprise Linux 8 (64-bit)')
+  (III) Storage Summary        : 3 disk(s), Max Disk Size (vDisk) - 200.0 GiB
+  (IV)  Functional Purpose (Ann.): Development DB Server; Has Snapshots; Owner: DBAdmin01
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 8
+  Memory (MiB)              : 32768
+  Provisioned Storage (MiB) : 550000 (vInfo)
+  In Use Storage (MiB)      : 400000 (vInfo)
+  Total Disk Capacity (MiB) : 512000 (vDisk sum)
+  Number of Disks (vDisk)   : 3
+  Max Disk Size (MiB vDisk) : 204800
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 15
+  Cluster                   : ClusterB
+  Resource Pool             : RP-Development
+  Folder Path               : /Datacenter1/Dev_VMs
+  Number of NICs (vInfo)    : 2
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Network Adapters; Snapshots Present
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 2 found (Exist: Yes) - Notes: Must be consolidated before migration.
+      - Snapshot 1: Name: 'nan', Created: nan
+      - Snapshot 2: Name: 'nan', Created: nan
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/03/12 11:00:00' - Notes: CBT likely enabled (Change Version: 2023/03/12 11:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: iot-gateway-customos
+  (I)   Calculated Risk Score  : 3 (Reasons: Hardware Version (10): +1; Disk Controllers: +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Linux Other', Profile - 'Linux' (From: 'Custom Embedded Linux 32-bit')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 10.0 GiB
+  (IV)  Functional Purpose (Ann.): IoT Gateway with custom OS
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 1
+  Memory (MiB)              : 1024
+  Provisioned Storage (MiB) : 12000 (vInfo)
+  In Use Storage (MiB)      : 8000 (vInfo)
+  Total Disk Capacity (MiB) : 10240 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 10240
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 10
+  Cluster                   : ClusterIoT
+  Resource Pool             : RP-IoT
+  Folder Path               : /Datacenter2/IoT
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: Hardware Version (10); Disk Controllers; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (10), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: ide)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/10/05 12:00:00' - Notes: CBT likely enabled (Change Version: 2023/10/05 12:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+
+Grouping by :
+=== MIGRATION RECOMMENDATION CATEGORY: REVIEW / REHOST / REPLATFORM / REFACTOR ===
+    (12 VM(s) in this category)
+
+VM: archival-storage-vm
+  (I)   Calculated Risk Score  : 5 (Reasons: OS Profile 'Hard': +3; Disk Controllers: +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Unknown OS', Profile - 'Hard' (From: 'Unknown Linux')
+  (III) Storage Summary        : 2 disk(s), Max Disk Size (vDisk) - 4000.0 GiB
+  (IV)  Functional Purpose (Ann.): Large archival storage VM
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOff
+  CPUs                      : 2
+  Memory (MiB)              : 4096
+  Provisioned Storage (MiB) : 5125000 (vInfo)
+  In Use Storage (MiB)      : 4000000 (vInfo)
+  Total Disk Capacity (MiB) : 5120000 (vDisk sum)
+  Number of Disks (vDisk)   : 2
+  Max Disk Size (MiB vDisk) : 4096000
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 15
+  Cluster                   : ClusterArchive
+  Resource Pool             : RP-Archive
+  Folder Path               : /Datacenter2/Archive
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Disk Controllers; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: sata)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2022/01/01 00:00:00' - Notes: CBT likely enabled (Change Version: 2022/01/01 00:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: backup-proxy-linux-consolidate
+  (I)   Calculated Risk Score  : 4 (Reasons: OS Profile 'Hard': +3; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Ubuntu', Profile - 'Hard' (From: 'Ubuntu Linux (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 100.0 GiB
+  (IV)  Functional Purpose (Ann.): Backup Proxy
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 110000 (vInfo)
+  In Use Storage (MiB)      : 80000 (vInfo)
+  Total Disk Capacity (MiB) : 102400 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 102400
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 11269 (11.2.5)
+  Hardware Version          : 15
+  Cluster                   : Datacenter2
+  Resource Pool             : RP-Backup
+  Folder Path               : /Datacenter2/BackupInfra
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 11269 (11.2.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/01/20 10:00:00' - Notes: CBT likely enabled (Change Version: 2023/01/20 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: cctv-recorder-win
+  (I)   Calculated Risk Score  : 5 (Reasons: OS Profile 'Medium': +1; Network Adapters: +1; Snapshots Present: +3)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2016', Profile - 'Medium' (From: 'Microsoft Windows Server 2016 (64-bit)')
+  (III) Storage Summary        : 5 disk(s), Max Disk Size (vDisk) - 4000.0 GiB
+  (IV)  Functional Purpose (Ann.): CCTV Recording Server; Needs Consolidation; Tools Old
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 4
+  Memory (MiB)              : 16384
+  Provisioned Storage (MiB) : 10260000 (vInfo)
+  In Use Storage (MiB)      : 9500000 (vInfo)
+  Total Disk Capacity (MiB) : 10444800 (vDisk sum)
+  Number of Disks (vDisk)   : 5
+  Max Disk Size (MiB vDisk) : 4096000
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 10346 (10.3.10)
+  Hardware Version          : 19
+  Cluster                   : ClusterSecurity
+  Resource Pool             : RP-Security
+  Folder Path               : /Datacenter1/Security
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Medium'; Network Adapters; Snapshots Present
+    - Tools Status Notes: Running (Version Reported Only). Version: 10346 (10.3.10). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 1 found (Exist: Yes) - Notes: Must be consolidated before migration.
+      - Snapshot 1: Name: 'nan', Created: nan
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/02/15 10:00:00' - Notes: CBT likely enabled (Change Version: 2023/02/15 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: excluded-vm-hw5
+  (I)   Calculated Risk Score  : 6 (Reasons: OS Profile 'Retire': +3; Hardware Version (5): +1; Disk Controllers: +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Other OS (Retire)', Profile - 'Retire' (From: 'Other Linux (32-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 10.0 GiB
+  (IV)  Functional Purpose (Ann.): VM with very old HW version 5 for testing
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 1
+  Memory (MiB)              : 1024
+  Provisioned Storage (MiB) : 12000 (vInfo)
+  In Use Storage (MiB)      : 8000 (vInfo)
+  Total Disk Capacity (MiB) : 10240 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 10240
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 5
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Production
+  Folder Path               : /Datacenter1/Prod_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Retire'; Hardware Version (5); Disk Controllers; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (5), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: buslogic parallel)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2020/02/01 10:00:00' - Notes: CBT likely enabled (Change Version: 2020/02/01 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: excluded-vm-novmtools
+  (I)   Calculated Risk Score  : 5 (Reasons: OS Profile 'Hard': +3; Hardware Version (10): +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Unknown OS', Profile - 'Hard' (From: 'Unknown')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 10.0 GiB
+  (IV)  Functional Purpose (Ann.): VM with no vmtools for testing
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 1
+  Memory (MiB)              : 1024
+  Provisioned Storage (MiB) : 12000 (vInfo)
+  In Use Storage (MiB)      : 8000 (vInfo)
+  Total Disk Capacity (MiB) : 10240 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 10240
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 10
+  Cluster                   : ClusterA
+  Resource Pool             : RP-Production
+  Folder Path               : /Datacenter1/Prod_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Hardware Version (10); Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (10), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2020/02/01 10:00:00' - Notes: CBT likely enabled (Change Version: 2020/02/01 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: jumpbox-secure-linux
+  (I)   Calculated Risk Score  : 4 (Reasons: OS Profile 'Hard': +3; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Ubuntu', Profile - 'Hard' (From: 'Ubuntu 20.04 LTS')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 40.0 GiB
+  (IV)  Functional Purpose (Ann.): Secure Jumpbox for Admin Access
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 2048
+  Provisioned Storage (MiB) : 43000 (vInfo)
+  In Use Storage (MiB)      : 20000 (vInfo)
+  Total Disk Capacity (MiB) : 40960 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 40960
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 11269 (11.2.5)
+  Hardware Version          : 19
+  Cluster                   : ClusterSecure
+  Resource Pool             : RP-SecureMgmt
+  Folder Path               : /Datacenter2/SecureManagement
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 11269 (11.2.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/05/20 11:00:00' - Notes: CBT likely enabled (Change Version: 2023/05/20 11:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: kube-master-ubuntu-thick
+  (I)   Calculated Risk Score  : 9 (Reasons: OS Profile 'Hard': +3; Network Adapters: +1; Passthrough Devices: +5)
+  (II)  OS & Complexity        : Mapped OS - 'Ubuntu', Profile - 'Hard' (From: 'Ubuntu 22.04 LTS')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 300.0 GiB
+  (IV)  Functional Purpose (Ann.): Kubernetes Master Node; Thick Provisioned; GPU Passthrough enabled
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 16
+  Memory (MiB)              : 65536
+  Provisioned Storage (MiB) : 330000 (vInfo)
+  In Use Storage (MiB)      : 300000 (vInfo)
+  Total Disk Capacity (MiB) : 307200 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 307200
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 21
+  Cluster                   : ClusterC
+  Resource Pool             : RP-Kubernetes
+  Folder Path               : /Datacenter2/K8s_Cluster/Masters
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Network Adapters; Passthrough Devices
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: pvscsi)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): Yes - Notes: Passthrough devices indicated. Migration requires special handling or device removal.
+    - CBT Status (Change Version from vInfo): '2023/05/15 16:00:00' - Notes: CBT likely enabled (Change Version: 2023/05/15 16:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: legacy-app-win2012
+  (I)   Calculated Risk Score  : 8 (Reasons: OS Profile 'Hard': +3; Hardware Version (7): +1; Network Adapters: +1; Snapshots Present: +3)
+  (II)  OS & Complexity        : Mapped OS - 'Windows Server 2012', Profile - 'Hard' (From: 'Microsoft Windows Server 2012 R2 (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 100.0 GiB
+  (IV)  Functional Purpose (Ann.): Windows 2012 R2
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 8192
+  Provisioned Storage (MiB) : 110000 (vInfo)
+  In Use Storage (MiB)      : 95000 (vInfo)
+  Total Disk Capacity (MiB) : 102400 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 102400
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 9349 (9.3.5)
+  Hardware Version          : 7
+  Cluster                   : Datacenter1
+  Resource Pool             : RP-Legacy
+  Folder Path               : /Datacenter1/Legacy_Apps
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Hardware Version (7); Network Adapters; Snapshots Present
+    - Tools Status Notes: Running (Version Reported Only). Version: 9349 (9.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (7), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic parallel)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 1 found (Exist: Yes) - Notes: Must be consolidated before migration.
+      - Snapshot 1: Name: 'nan', Created: nan
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/01/01 00:00:00' - Notes: CBT likely enabled (Change Version: 2023/01/01 00:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: monitoring-agent-poweredoff
+  (I)   Calculated Risk Score  : 5 (Reasons: OS Profile 'Retire': +3; Hardware Version (8): +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Other OS (Retire)', Profile - 'Retire' (From: 'Other 3.x Linux (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 20.0 GiB
+  (IV)  Functional Purpose (Ann.): Monitoring agent VM
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOff
+  CPUs                      : 1
+  Memory (MiB)              : 1024
+  Provisioned Storage (MiB) : 22000 (vInfo)
+  In Use Storage (MiB)      : 10000 (vInfo)
+  Total Disk Capacity (MiB) : 20480 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 20480
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 11269 (11.2.5)
+  Hardware Version          : 8
+  Cluster                   : Datacenter2
+  Resource Pool             : RP-Monitoring
+  Folder Path               : /Datacenter2/Monitoring
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Retire'; Hardware Version (8); Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 11269 (11.2.5). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (8), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2023/08/05 00:00:00' - Notes: CBT likely enabled (Change Version: 2023/08/05 00:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: research-gpu-passthru
+  (I)   Calculated Risk Score  : 13 (Reasons: OS Profile 'Hard': +3; Disk Controllers: +1; Network Adapters: +1; Snapshots Present: +3; Passthrough Devices: +5)
+  (II)  OS & Complexity        : Mapped OS - 'Ubuntu', Profile - 'Hard' (From: 'Ubuntu 22.04.3 LTS')
+  (III) Storage Summary        : 2 disk(s), Max Disk Size (vDisk) - 500.0 GiB
+  (IV)  Functional Purpose (Ann.): Research VM with GPU Passthrough
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 32
+  Memory (MiB)              : 262144
+  Provisioned Storage (MiB) : 1100000 (vInfo)
+  In Use Storage (MiB)      : 900000 (vInfo)
+  Total Disk Capacity (MiB) : 1024000 (vDisk sum)
+  Number of Disks (vDisk)   : 2
+  Max Disk Size (MiB vDisk) : 512000
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 12352 (12.3.5)
+  Hardware Version          : 21
+  Cluster                   : ClusterResearch
+  Resource Pool             : RP-Research
+  Folder Path               : /Datacenter2/Research_HPC
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Disk Controllers; Network Adapters; Snapshots Present; Passthrough Devices
+    - Tools Status Notes: Running (Version Reported Only). Version: 12352 (12.3.5). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Efi - Notes: Firmware is Efi. EFI firmware reported.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: nvme)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 2 found (Exist: Yes) - Notes: Must be consolidated before migration.
+      - Snapshot 1: Name: 'nan', Created: nan
+      - Snapshot 2: Name: 'nan', Created: nan
+    - Passthrough Devices (HotPlug field): Yes - Notes: Passthrough devices indicated. Migration requires special handling or device removal.
+    - CBT Status (Change Version from vInfo): '2023/07/05 12:00:00' - Notes: CBT likely enabled (Change Version: 2023/07/05 12:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: testvm-oldhw-bios
+  (I)   Calculated Risk Score  : 6 (Reasons: OS Profile 'Retire': +3; Hardware Version (7): +1; Disk Controllers: +1; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Other OS (Retire)', Profile - 'Retire' (From: 'Other 2.6.x Linux (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 20.0 GiB
+  (IV)  Functional Purpose (Ann.): Legacy test VM
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOff
+  CPUs                      : 1
+  Memory (MiB)              : 2048
+  Provisioned Storage (MiB) : 22000 (vInfo)
+  In Use Storage (MiB)      : 15000 (vInfo)
+  Total Disk Capacity (MiB) : 20480 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 20480
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : (0.0.0)
+  Hardware Version          : 7
+  Cluster                   : Datacenter2
+  Resource Pool             : RP-Lab
+  Folder Path               : /Datacenter2/Lab_VMs
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Retire'; Hardware Version (7); Disk Controllers; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: (0.0.0). Consider update if not current/ok.
+    - Hardware Version Notes: Older HW version (7), consider upgrade pre-migration.
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: No MTV-compatible disk controller found. (Present: buslogic parallel)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2021/02/01 00:00:00' - Notes: CBT likely enabled (Change Version: 2021/02/01 00:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
+
+VM: web-apache-toolsold
+  (I)   Calculated Risk Score  : 4 (Reasons: OS Profile 'Hard': +3; Network Adapters: +1)
+  (II)  OS & Complexity        : Mapped OS - 'Ubuntu', Profile - 'Hard' (From: 'Ubuntu Linux (64-bit)')
+  (III) Storage Summary        : 1 disk(s), Max Disk Size (vDisk) - 80.0 GiB
+  (IV)  Functional Purpose (Ann.): Apache web server
+  ---- Detailed Attributes & Considerations ----
+  Power State               : poweredOn
+  CPUs                      : 2
+  Memory (MiB)              : 4096
+  Provisioned Storage (MiB) : 85000 (vInfo)
+  In Use Storage (MiB)      : 40000 (vInfo)
+  Total Disk Capacity (MiB) : 81920 (vDisk sum)
+  Number of Disks (vDisk)   : 1
+  Max Disk Size (MiB vDisk) : 81920
+  VMware Tools Status       : Running (Version Reported Only)
+  VMware Tools Version      : 10346 (10.3.10)
+  Hardware Version          : 19
+  Cluster                   : Datacenter1
+  Resource Pool             : RP-Web
+  Folder Path               : /Datacenter1/WebServers
+  Number of NICs (vInfo)    : 1
+  Migration Considerations (Analysis):
+    - Primary Risk Factors Identified: OS Profile 'Hard'; Network Adapters
+    - Tools Status Notes: Running (Version Reported Only). Version: 10346 (10.3.10). Consider update if not current/ok.
+    - Hardware Version Notes: N/A
+    - Firmware: Bios - Notes: Firmware is Bios. BIOS firmware reported; EFI is generally preferred for newer OS.
+    - Disk Controller Notes: Compatible disk controller(s) detected or no disk controllers reported. (Present: lsi logic sas)
+    - Network Adapter Notes: Non-preferred NIC(s) found: nan. Recommended: VMXNET3, VirtIO. (Types Present: nan)
+    - Snapshots Info: 0 found (Exist: No) - Notes: N/A
+    - Passthrough Devices (HotPlug field): No - Notes: No passthrough devices indicated.
+    - CBT Status (Change Version from vInfo): '2022/09/01 10:00:00' - Notes: CBT likely enabled (Change Version: 2022/09/01 10:00:00). Warm migration may be possible.
+    - Hibernation/Suspend Status Notes: Hibernation appears disabled or VM not suspended.
+------------------------------------------------------------
