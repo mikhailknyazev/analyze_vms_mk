@@ -1,5 +1,5 @@
 """
-VM Migration Analysis Script from RVTools Export. Version 1.1.
+VM Migration Analysis Script from RVTools Export. Version 1.2.
 
 MIT License
 Copyright (c) 2025 Michael Knyazev (Mikhail Vladimirovich Kniazev)
