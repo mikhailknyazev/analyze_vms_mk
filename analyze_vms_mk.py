@@ -250,7 +250,7 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
         if line_text.strip().lower() == sheet_marker_to_find:
             if i + 1 < len(lines) and lines[i+1].strip(): # Header should be on the next line
                 header_line_idx = i + 1
-                header_content_for_parsing = lines[header_line_idx].strip()
+                header_content_for_parsing = lines[i+1].strip() # Use lines[i+1] directly
                 # print(f"  Found sheet marker '{lines[i].strip()}' at line {i+1}. Header expected at line {header_line_idx+1}.")
                 break
             else:
@@ -874,6 +874,8 @@ def enrich_vm_data(vinfo_list_of_dicts, disks_df, nics_df, snapshots_df, os_mapp
             mc['migration_recommendation_category'] = "LOW COMPLEXITY / EASIER MIGRATION"
 
         vm_detail_dict['migration_considerations'] = mc
+        # Add num_snapshots directly to vm_detail_dict for CSV to easily pick up
+        vm_detail_dict['num_snapshots'] = num_snapshots
         enriched_vms.append(vm_detail_dict)
     return enriched_vms
 
@@ -1055,7 +1057,9 @@ def generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath):
             risk_score = mc.get('risk_score', 'N/A')
             risk_reasons_str = ""
             if mc.get('risk_score_reasons'):
-                risk_reasons_str = f" (Reasons: {'; '.join(mc['risk_score_reasons'])})"
+                # Ensure risk_score_reasons are strings before joining
+                safe_reasons = [str(r) for r in mc['risk_score_reasons']]
+                risk_reasons_str = f" (Reasons: {'; '.join(safe_reasons)})"
             report_lines.append(f"  (I)   Calculated Risk Score  : {risk_score}{risk_reasons_str}")
             report_lines.append(f"  (II)  OS & Complexity        : Mapped OS - '{vm.get('OS_Mapped_Name', 'N/A')}', Profile - '{vm.get('OS_Profile', 'N/A')}' (From: '{vm.get('OS_Primary', 'N/A')}')")
 
@@ -1082,7 +1086,8 @@ def generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath):
 
             report_lines.append("  Migration Considerations (Analysis):")
             # Primary risk factors are those that contributed points to the score
-            primary_risk_factors = [item.split(':')[0].strip() for item in mc.get('risk_score_reasons', []) if not isinstance(item, str) or int(item.split(': +')[1]) > 0] if mc.get('risk_score_reasons') else []
+            # Ensure risk_score_reasons are strings before processing
+            primary_risk_factors = [item.split(':')[0].strip() for item in [str(r) for r in mc.get('risk_score_reasons', [])] if ': +' in item and int(item.split(': +')[1]) > 0] if mc.get('risk_score_reasons') else []
             report_lines.append(f"    - Primary Risk Factors Identified: {'; '.join(primary_risk_factors) if primary_risk_factors else 'None (Low Risk Score)'}")
             report_lines.append(f"    - Tools Status Notes: {mc.get('tools_status_category', 'N/A')}. Version: {mc.get('tools_status_version_reported', 'N/A')}. Consider update if not current/ok.")
             report_lines.append(f"    - Hardware Version Notes: {mc.get('hw_version_notes', 'N/A')}")
@@ -1122,7 +1127,7 @@ def generate_csv_report(enriched_vms, output_csv_fpath):
         row['OS_RVTools_Config_Reported'] = vm.get('OS according to the configuration file', 'N/A')
         row['OS_Primary_Source_Used'] = vm.get('OS_Primary', 'N/A')
         row['OS_Mapped_Name'] = vm.get('OS_Mapped_Name', 'N/A')
-        row['OS_Complexity_Profile'] = vm.get('OS_Profile', 'N/A')
+        row['OS_Complexity_Profile'] = mc.get('os_profile_from_mapping', 'N/A') # Use mapped profile from MC
 
         # Resource Information
         row['CPUs_Allocated'] = vm.get('CPUs', 0)
@@ -1147,24 +1152,38 @@ def generate_csv_report(enriched_vms, output_csv_fpath):
         row['VMware_Tools_Version_Reported'] = mc.get('tools_status_version_reported', 'N/A')
 
         # Disk & Network Details (flattened)
-        disk_controllers = sorted(list(set([str(d.get('Controller', '')).strip() for d in vm.get('DiskDetails', []) if d.get('Controller')])))
+        # Safely extract and process disk controllers
+        disk_controllers_raw = [
+            str(d.get('Controller', '')).strip()
+            for d in vm.get('DiskDetails', [])
+            if d.get('Controller') is not None and not pd.isna(d.get('Controller'))
+        ]
+        disk_controllers = sorted(list(set([c.lower() for c in disk_controllers_raw if c])))
         row['Disk_Controller_Types_Present'] = ", ".join(disk_controllers) if disk_controllers else "None Reported"
 
-        nic_adapters = sorted(list(set([str(n.get('Adapter', '')).strip() for n in vm.get('NICDetails', []) if n.get('Adapter') and n.get('Adapter').lower() != 'false'])))
+        # Safely extract and process network adapters
+        nic_adapters_raw = [
+            str(n.get('Adapter', '')).strip()
+            for n in vm.get('NICDetails', [])
+            if n.get('Adapter') is not None and not pd.isna(n.get('Adapter')) and str(n.get('Adapter')).lower() != 'false'
+        ]
+        nic_adapters = sorted(list(set([na.lower() for na in nic_adapters_raw if na])))
         row['Network_Adapter_Types_Present'] = ", ".join(nic_adapters) if nic_adapters else "None Reported"
         row['Number_of_NICs'] = vm.get('TotalNICs', 0)
 
 
         # Migration Considerations & Risk Scoring
         row['Calculated_Risk_Score'] = mc.get('risk_score', 'N/A')
-        row['Risk_Score_Reasons'] = "; ".join(mc.get('risk_score_reasons', []))
+        # Ensure elements are strings before joining
+        safe_risk_reasons = [str(r) for r in mc.get('risk_score_reasons', [])]
+        row['Risk_Score_Reasons'] = "; ".join(safe_risk_reasons)
 
         row['Hardware_Version_Notes'] = mc.get('hw_version_notes', 'N/A')
         row['Firmware_Notes'] = mc.get('firmware_notes', 'N/A')
         row['Disk_Controller_Notes'] = mc.get('disk_controller_notes', 'N/A')
         row['Network_Adapter_Notes'] = mc.get('network_adapter_notes', 'N/A')
 
-        row['Snapshots_Exist'] = "Yes" if vm.get('num_snapshots', 0) > 0 else "No" # From `num_snapshots` in mc, derived in `enrich_vm_data`
+        row['Snapshots_Exist'] = "Yes" if vm.get('num_snapshots', 0) > 0 else "No"
         row['Number_of_Snapshots'] = vm.get('num_snapshots', 0)
         row['Snapshots_Info_Notes'] = mc.get('snapshots_info', 'N/A')
 
