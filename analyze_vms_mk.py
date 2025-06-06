@@ -72,7 +72,7 @@ EXCLUSION_REGEX_PATTERNS:
     not included in the detailed migration risk analysis or scoring. They are
     summarized in a separate section of the report.
 
-Output Report File:
+Output Report File (Text):
   - Format: Plain text (.txt).
   - Naming: Defaults to "<rvtools_filename>__migration_focused_report.txt"
     or can be specified with the --output_fpath argument.
@@ -114,6 +114,13 @@ Output Report File:
          - Migration Considerations: Primary risk factors, notes on tools,
            HW version, firmware, disk controllers, NICs, snapshots,
            passthrough, CBT.
+
+Output Report File (CSV):
+  - Format: Comma Separated Values (.csv).
+  - Naming: Defaults to "<rvtools_filename>__migration_focused_report.csv"
+    or can be specified with the --output_csv_fpath argument.
+  - Content: A flat table with one row per VM (including templates and excluded VMs)
+    and detailed attributes and migration considerations as columns.
 """
 
 import pandas as pd
@@ -244,7 +251,7 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
             if i + 1 < len(lines) and lines[i+1].strip(): # Header should be on the next line
                 header_line_idx = i + 1
                 header_content_for_parsing = lines[header_line_idx].strip()
-                print(f"  Found sheet marker '{lines[i].strip()}' at line {i+1}. Header expected at line {header_line_idx+1}.")
+                # print(f"  Found sheet marker '{lines[i].strip()}' at line {i+1}. Header expected at line {header_line_idx+1}.")
                 break
             else:
                 # Marker found, but no subsequent line for header
@@ -253,7 +260,7 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
 
     # Strategy 2: If marker not found, try to find header by content match (first few expected columns)
     if header_line_idx == -1:
-        print(f"  Marker '{sheet_marker_to_find}' not found. Trying content-based header search for '{sheet_name_base}'.")
+        # print(f"  Marker '{sheet_name_base}' not found. Trying content-based header search for '{sheet_name_base}'.")
         # Use the first few expected columns (sanitized) to identify a potential header line
         sanitized_expected_prefix = [sanitize_column_name(ec) for ec in expected_cols[:min(3, len(expected_cols))]]
         for i, line_text in enumerate(lines):
@@ -272,7 +279,7 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
                 if is_ordered_match:
                     header_line_idx = i
                     header_content_for_parsing = lines[header_line_idx].strip()
-                    print(f"  Found potential header by content match for '{sheet_name_base}' at line {header_line_idx+1}.")
+                    # print(f"  Found potential header by content match for '{sheet_name_base}' at line {header_line_idx+1}.")
                     break
             except Exception: # If line_text.split(',') fails or other unexpected issue
                 continue # Try next line
@@ -296,10 +303,10 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
                 # Check if the next non-blank line is a marker for any known sheet
                 is_next_sheet_marker = any(next_line_stripped_lower == f"{known_base_name}: table 1" for known_base_name in BASE_SHEET_NAMES_FOR_TABLE_1_PATTERN)
                 if is_next_sheet_marker:
-                    print(f"  INFO: Stopping data for '{sheet_name_base}' at blank line {i+1}. Next line {i+2} is '{lines[i+1].strip()}'.")
+                    # print(f"  INFO: Stopping data for '{sheet_name_base}' at blank line {i+1}. Next line {i+2} is '{lines[i+1].strip()}'.")
                     break # End of current sheet's data
             else: # Blank line at the very end of the file
-                print(f"  INFO: Stopping data for '{sheet_name_base}' at blank line {i+1} (EOF).")
+                # print(f"  INFO: Stopping data for '{sheet_name_base}' at blank line {i+1} (EOF).")
                 break
             data_lines_for_parser.append(current_line_raw) # Include blank line if it's not an end-of-sheet marker
             continue
@@ -310,7 +317,7 @@ def read_rvtools_sheet(file_path, sheet_name_base, expected_cols):
         for known_base_name in BASE_SHEET_NAMES_FOR_TABLE_1_PATTERN:
             if current_line_lower == f"{known_base_name}: table 1":
                 if known_base_name != sheet_name_base.lower(): # Make sure it's not the current sheet's marker again
-                    print(f"  INFO: Stopping data for '{sheet_name_base}'. Found different sheet marker '{current_line_stripped}' at line {i+1}.")
+                    # print(f"  INFO: Stopping data for '{sheet_name_base}'. Found different sheet marker '{current_line_stripped}' at line {i+1}.")
                     is_new_sheet_marker = True
                     break
         if is_new_sheet_marker:
@@ -1075,7 +1082,7 @@ def generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath):
 
             report_lines.append("  Migration Considerations (Analysis):")
             # Primary risk factors are those that contributed points to the score
-            primary_risk_factors = [item.split(':')[0].strip() for item in mc.get('risk_score_reasons', []) if int(item.split(': +')[1]) > 0] if mc.get('risk_score_reasons') else []
+            primary_risk_factors = [item.split(':')[0].strip() for item in mc.get('risk_score_reasons', []) if not isinstance(item, str) or int(item.split(': +')[1]) > 0] if mc.get('risk_score_reasons') else []
             report_lines.append(f"    - Primary Risk Factors Identified: {'; '.join(primary_risk_factors) if primary_risk_factors else 'None (Low Risk Score)'}")
             report_lines.append(f"    - Tools Status Notes: {mc.get('tools_status_category', 'N/A')}. Version: {mc.get('tools_status_version_reported', 'N/A')}. Consider update if not current/ok.")
             report_lines.append(f"    - Hardware Version Notes: {mc.get('hw_version_notes', 'N/A')}")
@@ -1093,6 +1100,99 @@ def generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath):
 
     return "\n".join(report_lines)
 
+def generate_csv_report(enriched_vms, output_csv_fpath):
+    """
+    Generates a CSV report from the enriched VM data, with one VM per row.
+    """
+    print(f"\nGenerating CSV report: {output_csv_fpath}")
+
+    csv_data = []
+    for vm in enriched_vms:
+        row = {}
+        mc = vm.get('migration_considerations', {})
+
+        # Core VM Attributes
+        row['VM_Name'] = vm.get('VM', 'N/A')
+        row['Power_State'] = vm.get('Powerstate', 'N/A')
+        row['Is_Template'] = vm.get('is_template', False)
+        row['Is_Excluded_VM_by_Pattern'] = vm.get('is_excluded_vm', False)
+
+        # OS Information
+        row['OS_RVTools_Tools_Reported'] = vm.get('OS according to the VMware Tools', 'N/A')
+        row['OS_RVTools_Config_Reported'] = vm.get('OS according to the configuration file', 'N/A')
+        row['OS_Primary_Source_Used'] = vm.get('OS_Primary', 'N/A')
+        row['OS_Mapped_Name'] = vm.get('OS_Mapped_Name', 'N/A')
+        row['OS_Complexity_Profile'] = vm.get('OS_Profile', 'N/A')
+
+        # Resource Information
+        row['CPUs_Allocated'] = vm.get('CPUs', 0)
+        row['Memory_MiB_Allocated'] = vm.get('Memory', 0)
+        row['Provisioned_Storage_MiB_vInfo'] = vm.get('Provisioned MiB', 0)
+        row['In_Use_Storage_MiB_vInfo'] = vm.get('In Use MiB', 0)
+        row['Total_Disk_Capacity_MiB_vDisk_Sum'] = vm.get('TotalDiskCapacityMiB', 0.0)
+        row['Number_of_Disks'] = vm.get('num_disks', 0)
+        row['Max_Disk_Size_MiB'] = vm.get('max_disk_size_mib', 0.0)
+
+        # VM Configuration
+        row['HW_Version'] = vm.get('HW version', 'N/A')
+        row['Cluster'] = vm.get('Cluster', 'N/A')
+        row['Resource_Pool'] = vm.get('Resource pool', 'N/A')
+        row['Folder_Path'] = str(vm.get('Folder', '') or 'N/A').strip()
+        row['Annotation_Purpose'] = str(vm.get('Annotation', '') or 'N/A').strip()
+        row['Firmware_Type'] = str(vm.get('Firmware', 'N/A')).capitalize()
+        row['VI_SDK_API_Version'] = vm.get('VI SDK API Version', 'N/A')
+
+        # VMware Tools
+        row['VMware_Tools_Status_Category'] = mc.get('tools_status_category', 'N/A')
+        row['VMware_Tools_Version_Reported'] = mc.get('tools_status_version_reported', 'N/A')
+
+        # Disk & Network Details (flattened)
+        disk_controllers = sorted(list(set([str(d.get('Controller', '')).strip() for d in vm.get('DiskDetails', []) if d.get('Controller')])))
+        row['Disk_Controller_Types_Present'] = ", ".join(disk_controllers) if disk_controllers else "None Reported"
+
+        nic_adapters = sorted(list(set([str(n.get('Adapter', '')).strip() for n in vm.get('NICDetails', []) if n.get('Adapter') and n.get('Adapter').lower() != 'false'])))
+        row['Network_Adapter_Types_Present'] = ", ".join(nic_adapters) if nic_adapters else "None Reported"
+        row['Number_of_NICs'] = vm.get('TotalNICs', 0)
+
+
+        # Migration Considerations & Risk Scoring
+        row['Calculated_Risk_Score'] = mc.get('risk_score', 'N/A')
+        row['Risk_Score_Reasons'] = "; ".join(mc.get('risk_score_reasons', []))
+
+        row['Hardware_Version_Notes'] = mc.get('hw_version_notes', 'N/A')
+        row['Firmware_Notes'] = mc.get('firmware_notes', 'N/A')
+        row['Disk_Controller_Notes'] = mc.get('disk_controller_notes', 'N/A')
+        row['Network_Adapter_Notes'] = mc.get('network_adapter_notes', 'N/A')
+
+        row['Snapshots_Exist'] = "Yes" if vm.get('num_snapshots', 0) > 0 else "No" # From `num_snapshots` in mc, derived in `enrich_vm_data`
+        row['Number_of_Snapshots'] = vm.get('num_snapshots', 0)
+        row['Snapshots_Info_Notes'] = mc.get('snapshots_info', 'N/A')
+
+        row['Passthrough_Devices_Present'] = 'Yes' if str(vm.get('Fixed Passthru HotPlug','false')).lower() == 'true' else 'No'
+        row['Passthrough_Devices_Notes'] = mc.get('passthrough_notes', 'N/A')
+
+        row['CBT_Change_Version'] = vm.get('Change Version', 'N/A')
+        row['CBT_Status_Notes'] = mc.get('cbt_status_notes', 'N/A')
+
+        row['Suspended_To_Memory_Flag'] = vm.get('Suspended To Memory', False)
+        row['Suspend_Time'] = vm.get('Suspend time', 'N/A')
+        row['Hibernation_Suspend_Notes'] = mc.get('hibernation_notes', 'N/A')
+
+        row['Migration_Recommendation_Category'] = mc.get('migration_recommendation_category', 'N/A')
+        row['Exclusion_Reason'] = mc.get('excluded_reason', 'N/A') # For templates/excluded VMs
+
+        csv_data.append(row)
+
+    if csv_data:
+        df = pd.DataFrame(csv_data)
+        try:
+            df.to_csv(output_csv_fpath, index=False, encoding='utf-8-sig')
+            print(f"CSV report successfully generated: {output_csv_fpath}")
+        except Exception as e:
+            print(f"Error writing CSV report to file '{output_csv_fpath}': {e}")
+    else:
+        print("No VM data to write to CSV.")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1101,7 +1201,8 @@ def main():
         epilog=__doc__ # Use the module docstring as epilog
     )
     parser.add_argument("rvtools_fpath", help="Path to the RVTools export CSV file (single file with multiple 'sheets').")
-    parser.add_argument("-o", "--output_fpath", help="Path to save the generated report text file. \nDefaults to '<rvtools_filename>__migration_focused_report.txt'.")
+    parser.add_argument("-o", "--output_fpath", help="Path to save the generated TEXT report file. \nDefaults to '<rvtools_filename>__migration_focused_report.txt'.")
+    parser.add_argument("-c", "--output_csv_fpath", help="Path to save the generated CSV report file (detailed per-VM). \nDefaults to '<rvtools_filename>__migration_focused_report.csv'.")
     parser.add_argument("-m", "--os_map_fpath", default=OS_BREAKDOWN_FILE_PATH,
                         help=f"Path to the OS mapping CSV file. \nDefaults to '{OS_BREAKDOWN_FILE_PATH}' in the script's directory.")
     args = parser.parse_args()
@@ -1109,15 +1210,23 @@ def main():
     rvtools_fpath = args.rvtools_fpath
     os_map_fpath = args.os_map_fpath
 
+    base_name = os.path.splitext(os.path.basename(rvtools_fpath))[0]
+    
     if not args.output_fpath:
-        base_name = os.path.splitext(os.path.basename(rvtools_fpath))[0]
-        output_fpath = f"{base_name}__migration_focused_report.txt"
+        output_txt_fpath = f"{base_name}__migration_focused_report.txt"
     else:
-        output_fpath = args.output_fpath
+        output_txt_fpath = args.output_fpath
+
+    if not args.output_csv_fpath:
+        output_csv_fpath = f"{base_name}__migration_focused_report.csv"
+    else:
+        output_csv_fpath = args.output_csv_fpath
 
     print(f"Processing RVTools export: {rvtools_fpath}")
     print(f"Using OS mapping CSV: {os_map_fpath}")
-    print(f"Output report will be: {output_fpath}")
+    print(f"Output TEXT report will be: {output_txt_fpath}")
+    print(f"Output CSV report will be: {output_csv_fpath}")
+
 
     # --- Data Loading ---
     # vInfo is critical, parsed as list of dicts for detailed handling
@@ -1149,16 +1258,20 @@ def main():
         print("No VMs were processed after enrichment (e.g., vInfo might have been empty or contained no valid VM entries). Exiting.")
         return # Exit if no VMs to report on
 
-    # --- Report Generation ---
-    print(f"\nGenerating migration analysis report for {len(enriched_vms)} VMs (includes templates and excluded)...")
-    report_content = generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath)
+    # --- Report Generation (Text and CSV) ---
+    print(f"\nGenerating migration analysis reports for {len(enriched_vms)} VMs (includes templates and excluded)...")
 
+    # Generate Text Report
+    report_content_text = generate_report_text(enriched_vms, rvtools_fpath, os_map_fpath)
     try:
-        with open(output_fpath, 'w', encoding='utf-8') as f:
-            f.write(report_content)
-        print(f"\nReport successfully generated: {output_fpath}")
+        with open(output_txt_fpath, 'w', encoding='utf-8') as f:
+            f.write(report_content_text)
+        print(f"Text report successfully generated: {output_txt_fpath}")
     except Exception as e:
-        print(f"\nError writing report to file '{output_fpath}': {e}")
+        print(f"Error writing TEXT report to file '{output_txt_fpath}': {e}")
+
+    # Generate CSV Report
+    generate_csv_report(enriched_vms, output_csv_fpath)
 
 if __name__ == "__main__":
     main()
